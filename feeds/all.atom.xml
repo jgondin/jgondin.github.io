@@ -1,2 +1,2 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>Jay Gondin</title><link href="http://localhost:8000/" rel="alternate"></link><link href="http://localhost:8000/feeds/all.atom.xml" rel="self"></link><id>http://localhost:8000/</id><updated>2017-02-26T00:10:21Z</updated></feed>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>Jay Gondin</title><link href="https://jgondin.github.io/" rel="alternate"></link><link href="https://jgondin.github.io/feeds/all.atom.xml" rel="self"></link><id>https://jgondin.github.io/</id><updated>2017-02-26T00:23:15Z</updated></feed>
