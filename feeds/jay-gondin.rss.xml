@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0"><channel><title>Jay Gondin - Jay Gondin</title><link>https://jgondin.github.io/</link><description>A tour of my Data Science projects</description><lastBuildDate>Fri, 03 Mar 2017 09:00:00 -0800</lastBuildDate><item><title>Analysis of Ads conversion</title><link>https://jgondin.github.io/Analysis%20of%20Ads%20conversion.html</link><description>&lt;h1&gt;Analysis of Ads conversion&lt;/h1&gt;
+&lt;p&gt;This paper explored and build a predictive model conversion. It walked thru the data to understand and identify market opportunities.
+A few techniques are applied to deal with classification and unbalanced data, which is dicussed along the analysis.&lt;/p&gt;
+&lt;p&gt;We organized this work in:
+- Exploratory Analysis
+- Building …&lt;/p&gt;</description><dc:creator xmlns:dc="http://purl.org/dc/elements/1.1/">Jay Gondin</dc:creator><pubDate>Fri, 03 Mar 2017 09:00:00 -0800</pubDate><guid isPermaLink="false">tag:jgondin.github.io,2017-03-03:/Analysis of Ads conversion.html</guid></item></channel></rss>
