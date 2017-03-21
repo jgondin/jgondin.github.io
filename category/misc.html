@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+<<<<<<< HEAD
 
 <head>
         <meta charset="utf-8">
@@ -165,4 +166,1114 @@
 
 </body>
 
+=======
+<head>
+        <meta charset="utf-8" />
+        <title>Jay Gondin - misc</title>
+        <link rel="stylesheet" href="https://jgondin.github.io/theme/css/main.css" />
+        <link href="https://jgondin.github.io/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="Jay Gondin Atom Feed" />
+
+        <!--[if IE]>
+            <script src="https://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+        <![endif]-->
+</head>
+
+<body id="index" class="home">
+        <header id="banner" class="body">
+                <h1><a href="https://jgondin.github.io/">Jay Gondin  <strong>A tour of my Data Science projects</strong></a></h1>
+                <nav><ul>
+                    <li><a href="/">Home</a></li>
+                    <li><a href="/pages/about.html">About</a></li>
+                    <li><a href="/pages/contact.html">Contact</a></li>
+                    <li><a href="/pdfs/jresume.pdf">Resume</a></li>
+                    <li><a href="/archives.html">Archives</a></li>
+                    <li><a href="/tags.html">Tags</a></li>
+                </ul></nav>
+        </header><!-- /#banner -->
+
+            <aside id="featured" class="body">
+                <article>
+                    <h1 class="entry-title"><a href="https://jgondin.github.io/Analysis of Ads conversion.html">Analysis of Ads conversion</a></h1>
+<footer class="post-info">
+        <abbr class="published" title="2017-03-03T09:00:00-08:00">
+                Published: Fri 03 March 2017
+        </abbr>
+		<br />
+        <abbr class="modified" title="2017-03-03T09:00:00-08:00">
+                Updated: Fri 03 March 2017
+        </abbr>
+
+        <address class="vcard author">
+                By                         <a class="url fn" href="https://jgondin.github.io/author/jay-gondin.html">Jay Gondin</a>
+        </address>
+<p>In <a href="https://jgondin.github.io/category/misc.html">misc</a>.</p>
+
+</footer><!-- /.post-info --><h1>Analysis of Ads conversion</h1>
+<p>This paper explored and build a predictive model conversion. It walked thru the data to understand and identify market opportunities.
+A few techniques are applied to deal with classification and unbalanced data, which is dicussed along the analysis.</p>
+<p>We organized this work in:
+- Exploratory Analysis
+- Building Predictive Model
+- Optimization
+- Conclusion</p>
+<div class="highlight"><pre><span></span><span class="c1"># import modules</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="kn">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">patsy</span>
+<span class="kn">from</span> <span class="nn">sklearn.preprocessing</span> <span class="kn">import</span> <span class="n">PolynomialFeatures</span><span class="p">,</span> <span class="n">Normalizer</span><span class="p">,</span><span class="n">StandardScaler</span>
+<span class="kn">from</span> <span class="nn">sklearn.pipeline</span> <span class="kn">import</span> <span class="n">Pipeline</span>
+<span class="kn">from</span> <span class="nn">sklearn.svm</span> <span class="kn">import</span> <span class="n">SVC</span><span class="p">,</span> <span class="n">LinearSVC</span>
+<span class="kn">from</span> <span class="nn">sklearn.linear_model</span> <span class="kn">import</span> <span class="n">LogisticRegressionCV</span><span class="p">,</span> <span class="n">SGDClassifier</span>
+<span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span><span class="p">,</span> <span class="n">RandomizedSearchCV</span>
+<span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="kn">import</span> <span class="p">(</span><span class="n">accuracy_score</span><span class="p">,</span> <span class="n">classification_report</span><span class="p">,</span> <span class="n">f1_score</span><span class="p">,</span>
+                             <span class="n">confusion_matrix</span><span class="p">,</span> <span class="n">roc_auc_score</span><span class="p">,</span><span class="n">roc_curve</span><span class="p">,</span><span class="n">auc</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">sklearn.ensemble</span> <span class="kn">import</span> <span class="n">RandomForestClassifier</span>
+<span class="kn">import</span> <span class="nn">xgboost</span>
+<span class="kn">from</span> <span class="nn">sklearn.preprocessing</span> <span class="kn">import</span> <span class="n">OneHotEncoder</span>
+
+<span class="kn">from</span> <span class="nn">imblearn.over_sampling</span> <span class="kn">import</span> <span class="n">SMOTE</span><span class="p">,</span> <span class="n">ADASYN</span>
+<span class="c1"># configure print precision and graphs</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">seaborn</span> <span class="kn">as</span> <span class="nn">sns</span>
+<span class="n">pd</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">precision</span> <span class="o">=</span> <span class="mi">4</span>
+<span class="o">%</span><span class="n">matplotlib</span> <span class="n">inline</span>
+
+<span class="kn">import</span> <span class="nn">sklearn.manifold</span> <span class="kn">as</span> <span class="nn">manifold</span>
+<span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="kn">import</span> <span class="n">pairwise_distances</span>
+<span class="kn">import</span> <span class="nn">sklearn.decomposition</span> <span class="kn">as</span> <span class="nn">decomposition</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="n">path</span> <span class="o">=</span> <span class="s1">&#39;/hdd/data/collection-take-home-challenges/conversion_data.csv&#39;</span>
+<span class="n">conv_dta</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="n">conv_dta</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>  country  age  new_user source  total_pages_visited  converted
+  _____________________________________________________________
+      UK   25         1    Ads                    1          0
+      US   23         1    Seo                    5          0
+      US   28         1    Seo                    4          0
+   China   39         1    Seo                    5          0
+      US   30         1    Seo                    6          0
+</pre></div>
+
+
+<p>The table is "conversion_data". It has information about signed-in users
+during one session. Each row is a user session.</p>
+<p><strong>Columns description:</strong>   </p>
+<ul>
+<li><strong>country</strong>: user country based on the IP address</li>
+<li><strong>age</strong>: user age. Self-reported at sign-in step</li>
+<li><strong>new_user</strong> : whether the user created the account during this session or had already an
+ account and simply came back to the site</li>
+<li><strong>source</strong>: marketing channel source</li>
+<li><strong>Ads</strong>: came to the site by clicking on an advertisement<ul>
+<li><strong>Seo</strong>: came to the site by clicking on search results</li>
+<li><strong>Direct</strong>: came to the site by directly typing the URL on the browser</li>
+</ul>
+</li>
+<li><strong>total_pages_visited</strong>: number of total pages visited during the session. This is a proxy for
+time spent on site and engagement during the session.
+converted: this is our label. 1 means they converted within the session, 0 means they left
+without buying anything. The company goal is to increase conversion rate: # conversions
+/ total sessions.</li>
+</ul>
+<div class="highlight"><pre><span></span><span class="n">conv_dta</span><span class="o">.</span><span class="n">describe</span><span class="p">()</span>
+</pre></div>
+
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>age</th>
+      <th>new_user</th>
+      <th>total_pages_visited</th>
+      <th>converted</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>count</th>
+      <td>316200.0000</td>
+      <td>316200.0000</td>
+      <td>316200.0000</td>
+      <td>316200.0000</td>
+    </tr>
+    <tr>
+      <th>mean</th>
+      <td>30.5699</td>
+      <td>0.6855</td>
+      <td>4.8730</td>
+      <td>0.0323</td>
+    </tr>
+    <tr>
+      <th>std</th>
+      <td>8.2718</td>
+      <td>0.4643</td>
+      <td>3.3411</td>
+      <td>0.1767</td>
+    </tr>
+    <tr>
+      <th>min</th>
+      <td>17.0000</td>
+      <td>0.0000</td>
+      <td>1.0000</td>
+      <td>0.0000</td>
+    </tr>
+    <tr>
+      <th>25%</th>
+      <td>24.0000</td>
+      <td>0.0000</td>
+      <td>2.0000</td>
+      <td>0.0000</td>
+    </tr>
+    <tr>
+      <th>50%</th>
+      <td>30.0000</td>
+      <td>1.0000</td>
+      <td>4.0000</td>
+      <td>0.0000</td>
+    </tr>
+    <tr>
+      <th>75%</th>
+      <td>36.0000</td>
+      <td>1.0000</td>
+      <td>7.0000</td>
+      <td>0.0000</td>
+    </tr>
+    <tr>
+      <th>max</th>
+      <td>123.0000</td>
+      <td>1.0000</td>
+      <td>29.0000</td>
+      <td>1.0000</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="highlight"><pre><span></span><span class="n">conv_dta</span><span class="o">.</span><span class="n">info</span><span class="p">()</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>&lt;class &#39;pandas.core.frame.DataFrame&#39;&gt;
+RangeIndex: 316200 entries, 0 to 316199
+Data columns (total 6 columns):
+country                316200 non-null object
+age                    316200 non-null int64
+new_user               316200 non-null int64
+source                 316200 non-null object
+total_pages_visited    316200 non-null int64
+converted              316200 non-null int64
+dtypes: int64(4), object(2)
+memory usage: 14.5+ MB
+</pre></div>
+
+
+<p>There is no missing data. However, the maximum age of 123 years does not seems right.
+Luckily, only two values are incorrect, so we can just delete them.</p>
+<div class="highlight"><pre><span></span><span class="c1"># Select unusual ages</span>
+<span class="n">conv_dta</span><span class="o">.</span><span class="n">ix</span><span class="p">[</span><span class="n">conv_dta</span><span class="o">.</span><span class="n">age</span> <span class="o">&gt;</span> <span class="mi">79</span><span class="p">,:]</span>
+</pre></div>
+
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>country</th>
+      <th>age</th>
+      <th>new_user</th>
+      <th>source</th>
+      <th>total_pages_visited</th>
+      <th>converted</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>90928</th>
+      <td>Germany</td>
+      <td>123</td>
+      <td>0</td>
+      <td>Seo</td>
+      <td>15</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>295581</th>
+      <td>UK</td>
+      <td>111</td>
+      <td>0</td>
+      <td>Ads</td>
+      <td>10</td>
+      <td>1</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="highlight"><pre><span></span><span class="c1">#Drop observation with unusual age</span>
+<span class="n">conv_dta</span><span class="o">.</span><span class="n">ix</span><span class="p">[</span><span class="n">conv_dta</span><span class="o">.</span><span class="n">age</span> <span class="o">&gt;</span> <span class="mi">79</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+<span class="n">conv_dta</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">inplace</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="n">conv_dta</span><span class="o">.</span><span class="n">describe</span><span class="p">()</span>
+</pre></div>
+
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>age</th>
+      <th>new_user</th>
+      <th>total_pages_visited</th>
+      <th>converted</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>count</th>
+      <td>316198.0000</td>
+      <td>316198.0000</td>
+      <td>316198.0000</td>
+      <td>316198.0000</td>
+    </tr>
+    <tr>
+      <th>mean</th>
+      <td>30.5693</td>
+      <td>0.6855</td>
+      <td>4.8729</td>
+      <td>0.0323</td>
+    </tr>
+    <tr>
+      <th>std</th>
+      <td>8.2690</td>
+      <td>0.4643</td>
+      <td>3.3411</td>
+      <td>0.1767</td>
+    </tr>
+    <tr>
+      <th>min</th>
+      <td>17.0000</td>
+      <td>0.0000</td>
+      <td>1.0000</td>
+      <td>0.0000</td>
+    </tr>
+    <tr>
+      <th>25%</th>
+      <td>24.0000</td>
+      <td>0.0000</td>
+      <td>2.0000</td>
+      <td>0.0000</td>
+    </tr>
+    <tr>
+      <th>50%</th>
+      <td>30.0000</td>
+      <td>1.0000</td>
+      <td>4.0000</td>
+      <td>0.0000</td>
+    </tr>
+    <tr>
+      <th>75%</th>
+      <td>36.0000</td>
+      <td>1.0000</td>
+      <td>7.0000</td>
+      <td>0.0000</td>
+    </tr>
+    <tr>
+      <th>max</th>
+      <td>79.0000</td>
+      <td>1.0000</td>
+      <td>29.0000</td>
+      <td>1.0000</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Converted vs Not-Converted</h3>
+<p>Have a quick look at the statistics of the <em>converted</em> with <em>not-converted</em>.
+Users that converted tend to be younger, definitely visit more pages, and are not <em>new users</em>.</p>
+<p>The first graph shows that the website does better with users under 30 years old. However, the histogram show that most user have age between 20 and 40 years. I may suggest that the population between 30 and 40 may represent a market opportunity.</p>
+<p>Surprisily, the is a spike of convertion around user at the age 60, which probabily does not mean anything because there are very few user older then 50 years old.</p>
+<div class="highlight"><pre><span></span><span class="n">conv_dta</span><span class="o">.</span><span class="n">ix</span><span class="p">[</span><span class="n">conv_dta</span><span class="o">.</span><span class="n">converted</span><span class="o">==</span><span class="mi">1</span><span class="p">,:]</span><span class="o">.</span><span class="n">describe</span><span class="p">(</span><span class="n">percentiles</span><span class="o">=</span><span class="p">[])</span>
+</pre></div>
+
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>age</th>
+      <th>new_user</th>
+      <th>total_pages_visited</th>
+      <th>converted</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>count</th>
+      <td>10198.0000</td>
+      <td>10198.0000</td>
+      <td>10198.0000</td>
+      <td>10198.0</td>
+    </tr>
+    <tr>
+      <th>mean</th>
+      <td>26.5290</td>
+      <td>0.2980</td>
+      <td>14.5539</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>std</th>
+      <td>6.9373</td>
+      <td>0.4574</td>
+      <td>3.9635</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>min</th>
+      <td>17.0000</td>
+      <td>0.0000</td>
+      <td>2.0000</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>50%</th>
+      <td>25.0000</td>
+      <td>0.0000</td>
+      <td>14.0000</td>
+      <td>1.0</td>
+    </tr>
+    <tr>
+      <th>max</th>
+      <td>61.0000</td>
+      <td>1.0000</td>
+      <td>29.0000</td>
+      <td>1.0</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="highlight"><pre><span></span><span class="n">conv_dta</span><span class="o">.</span><span class="n">ix</span><span class="p">[</span><span class="n">conv_dta</span><span class="o">.</span><span class="n">converted</span><span class="o">==</span><span class="mi">0</span><span class="p">,:]</span><span class="o">.</span><span class="n">describe</span><span class="p">(</span><span class="n">percentiles</span><span class="o">=</span><span class="p">[])</span>
+</pre></div>
+
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>age</th>
+      <th>new_user</th>
+      <th>total_pages_visited</th>
+      <th>converted</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>count</th>
+      <td>306000.0000</td>
+      <td>306000.0000</td>
+      <td>306000.0000</td>
+      <td>306000.0</td>
+    </tr>
+    <tr>
+      <th>mean</th>
+      <td>30.7040</td>
+      <td>0.6984</td>
+      <td>4.5503</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>std</th>
+      <td>8.2758</td>
+      <td>0.4590</td>
+      <td>2.7899</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>min</th>
+      <td>17.0000</td>
+      <td>0.0000</td>
+      <td>1.0000</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>50%</th>
+      <td>30.0000</td>
+      <td>1.0000</td>
+      <td>4.0000</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>max</th>
+      <td>79.0000</td>
+      <td>1.0000</td>
+      <td>20.0000</td>
+      <td>0.0</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="highlight"><pre><span></span><span class="p">(</span><span class="n">conv_dta</span><span class="o">.</span><span class="n">ix</span><span class="p">[:,[</span><span class="s1">&#39;age&#39;</span><span class="p">,</span><span class="s1">&#39;converted&#39;</span><span class="p">]]</span>
+ <span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s1">&#39;age&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+ <span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s1">&#39;Converted Rate by Age&#39;</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span><span class="mi">6</span><span class="p">),</span><span class="n">legend</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+<span class="p">);</span>
+
+<span class="p">(</span><span class="n">conv_dta</span><span class="o">.</span><span class="n">ix</span><span class="p">[:,[</span><span class="s1">&#39;age&#39;</span><span class="p">]]</span>
+ <span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s1">&#39;hist&#39;</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Number of User by Age&#39;</span><span class="p">,</span>
+       <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span><span class="mi">6</span><span class="p">),</span> <span class="n">legend</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+<span class="p">);</span>
+</pre></div>
+
+
+<p><img alt="png" src="images/output_13_0.png"></p>
+<p><img alt="png" src="images/output_13_1.png"></p>
+<div class="highlight"><pre><span></span><span class="p">(</span><span class="n">conv_dta</span><span class="o">.</span><span class="n">ix</span><span class="p">[:,[</span><span class="s1">&#39;total_pages_visited&#39;</span><span class="p">,</span><span class="s1">&#39;converted&#39;</span><span class="p">]]</span>
+ <span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s1">&#39;total_pages_visited&#39;</span><span class="p">],</span><span class="n">as_index</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+ <span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+ <span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s1">&#39;scatter&#39;</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="s1">&#39;total_pages_visited&#39;</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="s1">&#39;converted&#39;</span><span class="p">,</span>
+       <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Conversion Rate vs Total of Pages Visited&#39;</span><span class="p">,</span>
+       <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span><span class="mi">6</span><span class="p">),</span> <span class="n">legend</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+       <span class="n">s</span> <span class="o">=</span> <span class="n">conv_dta</span><span class="o">.</span><span class="n">ix</span><span class="p">[:,[</span><span class="s1">&#39;total_pages_visited&#39;</span><span class="p">,</span><span class="s1">&#39;converted&#39;</span><span class="p">]]</span>
+       <span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s1">&#39;total_pages_visited&#39;</span><span class="p">],</span><span class="n">as_index</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+       <span class="o">.</span><span class="n">agg</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="o">/</span><span class="mi">50</span><span class="p">)</span>
+      <span class="p">)</span>
+ <span class="p">);</span>
+</pre></div>
+
+
+<p><img alt="png" src="images/output_14_0.png"></p>
+<p>Take a look at the categorical variables. It is clear that
+countries has different performances, but sources do not. </p>
+<div class="highlight"><pre><span></span><span class="p">(</span><span class="n">conv_dta</span><span class="o">.</span><span class="n">ix</span><span class="p">[:,[</span><span class="s1">&#39;new_user&#39;</span><span class="p">,</span><span class="s1">&#39;source&#39;</span><span class="p">,</span><span class="s1">&#39;converted&#39;</span><span class="p">]]</span>
+ <span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s1">&#39;new_user&#39;</span><span class="p">,</span><span class="s1">&#39;source&#39;</span><span class="p">])</span>
+ <span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+<span class="p">)</span>
+</pre></div>
+
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th></th>
+      <th>converted</th>
+    </tr>
+    <tr>
+      <th>new_user</th>
+      <th>source</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th rowspan="3" valign="top">0.0</th>
+      <th>Ads</th>
+      <td>0.0783</td>
+    </tr>
+    <tr>
+      <th>Direct</th>
+      <td>0.0612</td>
+    </tr>
+    <tr>
+      <th>Seo</th>
+      <td>0.0734</td>
+    </tr>
+    <tr>
+      <th rowspan="3" valign="top">1.0</th>
+      <th>Ads</th>
+      <td>0.0144</td>
+    </tr>
+    <tr>
+      <th>Direct</th>
+      <td>0.0131</td>
+    </tr>
+    <tr>
+      <th>Seo</th>
+      <td>0.0142</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="highlight"><pre><span></span><span class="p">(</span><span class="n">conv_dta</span><span class="o">.</span><span class="n">ix</span><span class="p">[:,[</span><span class="s1">&#39;country&#39;</span><span class="p">,</span><span class="s1">&#39;source&#39;</span><span class="p">,</span><span class="s1">&#39;converted&#39;</span><span class="p">]]</span>
+ <span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s1">&#39;country&#39;</span><span class="p">,</span><span class="s1">&#39;source&#39;</span><span class="p">])</span>
+ <span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+<span class="p">)</span>
+</pre></div>
+
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th></th>
+      <th>converted</th>
+    </tr>
+    <tr>
+      <th>country</th>
+      <th>source</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th rowspan="3" valign="top">China</th>
+      <th>Ads</th>
+      <td>0.0015</td>
+    </tr>
+    <tr>
+      <th>Direct</th>
+      <td>0.0014</td>
+    </tr>
+    <tr>
+      <th>Seo</th>
+      <td>0.0012</td>
+    </tr>
+    <tr>
+      <th rowspan="3" valign="top">Germany</th>
+      <th>Ads</th>
+      <td>0.0668</td>
+    </tr>
+    <tr>
+      <th>Direct</th>
+      <td>0.0534</td>
+    </tr>
+    <tr>
+      <th>Seo</th>
+      <td>0.0639</td>
+    </tr>
+    <tr>
+      <th rowspan="3" valign="top">UK</th>
+      <th>Ads</th>
+      <td>0.0556</td>
+    </tr>
+    <tr>
+      <th>Direct</th>
+      <td>0.0463</td>
+    </tr>
+    <tr>
+      <th>Seo</th>
+      <td>0.0539</td>
+    </tr>
+    <tr>
+      <th rowspan="3" valign="top">US</th>
+      <th>Ads</th>
+      <td>0.0406</td>
+    </tr>
+    <tr>
+      <th>Direct</th>
+      <td>0.0329</td>
+    </tr>
+    <tr>
+      <th>Seo</th>
+      <td>0.0385</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="highlight"><pre><span></span><span class="c1"># barplot for categorical variables</span>
+<span class="p">(</span><span class="n">conv_dta</span><span class="o">.</span><span class="n">ix</span><span class="p">[:,[</span><span class="s1">&#39;country&#39;</span><span class="p">,</span><span class="s1">&#39;converted&#39;</span><span class="p">]]</span>
+ <span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s1">&#39;country&#39;</span><span class="p">])</span>
+ <span class="o">.</span><span class="n">agg</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">])</span>
+ <span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s1">&#39;bar&#39;</span><span class="p">)</span>
+<span class="p">)</span>
+<span class="p">(</span><span class="n">conv_dta</span><span class="o">.</span><span class="n">ix</span><span class="p">[:,[</span><span class="s1">&#39;country&#39;</span><span class="p">,</span><span class="s1">&#39;converted&#39;</span><span class="p">]]</span>
+ <span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s1">&#39;country&#39;</span><span class="p">])</span>
+ <span class="o">.</span><span class="n">agg</span><span class="p">([</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="p">])</span>
+ <span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s1">&#39;bar&#39;</span><span class="p">,</span> <span class="n">legend</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+ <span class="p">);</span>
+</pre></div>
+
+
+<p><img alt="png" src="images/output_18_0.png"></p>
+<p><img alt="png" src="images/output_18_1.png"></p>
+<div class="highlight"><pre><span></span><span class="p">(</span><span class="n">conv_dta</span><span class="o">.</span><span class="n">ix</span><span class="p">[:,[</span><span class="s1">&#39;source&#39;</span><span class="p">,</span><span class="s1">&#39;converted&#39;</span><span class="p">]]</span>
+ <span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s1">&#39;source&#39;</span><span class="p">])</span>
+ <span class="o">.</span><span class="n">agg</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">])</span>
+ <span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">y</span><span class="o">=</span><span class="s1">&#39;converted&#39;</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;bar&#39;</span><span class="p">,</span><span class="n">legend</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+ <span class="p">);</span>
+</pre></div>
+
+
+<p><img alt="png" src="images/output_19_0.png"></p>
+<div class="highlight"><pre><span></span><span class="c1"># deconde string entries to numeric entries in order to run model.</span>
+<span class="n">old</span> <span class="o">=</span> <span class="n">conv_dta</span><span class="o">.</span><span class="n">country</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">()</span><span class="o">.</span><span class="n">values</span>
+<span class="n">conv_dta</span><span class="o">.</span><span class="n">country</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">old</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">old</span><span class="o">.</span><span class="n">size</span><span class="p">),</span> <span class="n">inplace</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+<span class="n">old</span> <span class="o">=</span> <span class="n">conv_dta</span><span class="o">.</span><span class="n">source</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">()</span><span class="o">.</span><span class="n">values</span>
+<span class="n">conv_dta</span><span class="o">.</span><span class="n">source</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">old</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">old</span><span class="o">.</span><span class="n">size</span><span class="p">),</span> <span class="n">inplace</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="n">conv_dta</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>country</th>
+      <th>age</th>
+      <th>new_user</th>
+      <th>source</th>
+      <th>total_pages_visited</th>
+      <th>converted</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>0</td>
+      <td>25.0</td>
+      <td>1.0</td>
+      <td>0</td>
+      <td>1.0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>1</td>
+      <td>23.0</td>
+      <td>1.0</td>
+      <td>1</td>
+      <td>5.0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>1</td>
+      <td>28.0</td>
+      <td>1.0</td>
+      <td>1</td>
+      <td>4.0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>2</td>
+      <td>39.0</td>
+      <td>1.0</td>
+      <td>1</td>
+      <td>5.0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>1</td>
+      <td>30.0</td>
+      <td>1.0</td>
+      <td>1</td>
+      <td>6.0</td>
+      <td>0.0</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2>Building a Predictive Model</h2>
+<p>The feature <code>total_pages_visited</code> is the most important feature and, also the most unlikely to change. Therefore, we would like to exclude this feature, then focus on what we can change. However, the quality of the predictive model without it, is very poor.</p>
+<div class="highlight"><pre><span></span><span class="n">dum</span> <span class="o">=</span>  <span class="n">OneHotEncoder</span><span class="p">(</span><span class="n">categorical_features</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">3</span><span class="p">])</span>
+<span class="n">d</span> <span class="o">=</span> <span class="n">dum</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">conv_dta</span><span class="o">.</span><span class="n">ix</span><span class="p">[:,:</span><span class="mi">4</span><span class="p">])</span>
+<span class="n">dum</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">conv_dta</span><span class="p">)</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span><span class="o">.</span><span class="n">shape</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>(316198, 11)
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="n">formula</span> <span class="o">=</span> <span class="s1">&#39;total_pages_visited + C(country) + age + new_user + C(source)&#39;</span>
+<span class="n">X</span> <span class="o">=</span> <span class="n">patsy</span><span class="o">.</span><span class="n">dmatrix</span><span class="p">(</span><span class="n">formula_like</span><span class="o">=</span><span class="n">formula</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">conv_dta</span><span class="p">,</span>
+                  <span class="n">return_type</span><span class="o">=</span><span class="s2">&quot;dataframe&quot;</span><span class="p">,</span> <span class="n">NA_action</span><span class="o">=</span><span class="s1">&#39;raise&#39;</span><span class="p">)</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">conv_dta</span><span class="o">.</span><span class="n">converted</span><span class="o">.</span><span class="n">values</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span>
+ <span class="n">X_test</span><span class="p">,</span>
+ <span class="n">y_train</span><span class="p">,</span>
+ <span class="n">y_test</span><span class="p">)</span> <span class="o">=</span> <span class="n">train_test_split</span><span class="p">(</span><span class="n">X</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.33</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">41</span><span class="p">)</span>
+<span class="n">X</span><span class="o">.</span><span class="n">shape</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>(316198, 9)
+</pre></div>
+
+
+<h4>Imbalanced Classes</h4>
+<p>See below that the dataset has a very imbalanced classes. The number of converted observations consist of one %3.22 of the dataset. Since, it is hightly inbalanced a random bootstrap oversampling of the minoriy will not be very suceful, in fact it is likely to overfit the minory.
+Using <a href="[http://www.cs.cmu.edu/afs/cs/project/jair/pub/volume16/chawla02a-html/chawla2002.html]">SMOTE</a> - Synthetic Minority
+Over-sampling Technique - to avoid overfiting the minory class.</p>
+<div class="highlight"><pre><span></span><span class="k">print</span><span class="p">(</span><span class="s1">&#39;Total:       </span><span class="si">%10d</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">y_train</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+<span class="k">print</span><span class="p">(</span><span class="s1">&#39;Converted 0: </span><span class="si">%10d</span><span class="s1"> (</span><span class="si">%%%4.2f</span><span class="s1">)&#39;</span> <span class="o">%</span> <span class="p">((</span><span class="n">y_train</span><span class="o">==</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(),</span> <span class="mi">100</span><span class="o">*</span><span class="p">(</span><span class="n">y_train</span><span class="o">==</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()))</span>
+<span class="k">print</span><span class="p">(</span><span class="s1">&#39;Converted 1: </span><span class="si">%10d</span><span class="s1"> (</span><span class="si">%%%4.2f</span><span class="s1">)&#39;</span> <span class="o">%</span> <span class="p">((</span><span class="n">y_train</span><span class="o">==</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(),</span> <span class="mi">100</span><span class="o">*</span><span class="p">(</span><span class="n">y_train</span><span class="o">==</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()))</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="n">Total</span><span class="o">:</span>           <span class="mi">211852</span>
+<span class="n">Converted</span> <span class="mi">0</span><span class="o">:</span>     <span class="mi">205030</span> <span class="o">(%</span><span class="mf">96.78</span><span class="o">)</span>
+<span class="n">Converted</span> <span class="mi">1</span><span class="o">:</span>       <span class="mi">6822</span> <span class="o">(%</span><span class="mf">3.22</span><span class="o">)</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="n">sm</span> <span class="o">=</span> <span class="n">SMOTE</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s1">&#39;regular&#39;</span><span class="p">,</span><span class="n">n_jobs</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span><span class="n">k_neighbors</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span><span class="n">m_neighbors</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">X_train</span><span class="p">,</span><span class="n">y_train</span><span class="o">=</span> <span class="n">sm</span><span class="o">.</span><span class="n">fit_sample</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span><span class="n">y_train</span><span class="p">)</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="n">sm</span> <span class="o">=</span> <span class="n">ADASYN</span><span class="p">(</span><span class="n">n_jobs</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+<span class="n">X_train</span><span class="p">,</span><span class="n">y_train</span><span class="o">=</span> <span class="n">sm</span><span class="o">.</span><span class="n">fit_sample</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span><span class="n">y_train</span><span class="p">)</span>
+</pre></div>
+
+
+<p>We will choose the random forest, since it is efficient, not too sensitive to unbalanced data, and gives good insight about the feature importance.</p>
+<div class="highlight"><pre><span></span><span class="n">rfc</span> <span class="o">=</span> <span class="n">RandomForestClassifier</span><span class="p">(</span><span class="n">n_jobs</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+                             <span class="n">max_features</span><span class="o">=</span> <span class="mi">7</span><span class="p">,</span>
+                             <span class="n">min_samples_leaf</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+                             <span class="n">bootstrap</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+                             <span class="n">n_estimators</span><span class="o">=</span> <span class="mi">200</span><span class="p">,</span> 
+                             <span class="n">max_depth</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+                             <span class="n">criterion</span><span class="o">=</span><span class="s1">&#39;entropy&#39;</span><span class="p">,</span> 
+                             <span class="n">min_samples_split</span><span class="o">=</span> <span class="mi">7</span>
+                             <span class="p">)</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="n">rfc</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">);</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="n">y_hat_train</span> <span class="o">=</span> <span class="n">rfc</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_train</span><span class="p">)</span>
+<span class="n">y_hat_test</span> <span class="o">=</span> <span class="n">rfc</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
+<span class="k">print</span><span class="p">(</span><span class="s1">&#39;In sample:</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">classification_report</span><span class="p">(</span><span class="n">y_train</span><span class="p">,</span> <span class="n">y_hat_train</span><span class="p">))</span>
+<span class="k">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Out of sample:</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span><span class="n">classification_report</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">y_hat_test</span><span class="p">))</span>  
+
+<span class="n">m_in</span> <span class="o">=</span> <span class="n">confusion_matrix</span><span class="p">(</span><span class="n">y_train</span><span class="p">,</span> <span class="n">y_hat_train</span><span class="p">)</span>
+<span class="n">m_out</span> <span class="o">=</span> <span class="n">confusion_matrix</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">y_hat_test</span><span class="p">)</span>
+
+<span class="k">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">In sample:</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">m_in</span><span class="p">)</span>
+<span class="k">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Out of sample:</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span><span class="n">m_out</span><span class="p">,</span><span class="s1">&#39;</span><span class="se">\n\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+<span class="k">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">In sample:&#39;</span><span class="p">)</span>
+<span class="k">print</span><span class="p">(</span><span class="s1">&#39;Error class 0: </span><span class="si">%4.4f</span><span class="s1">, Error class 1: </span><span class="si">%4.4f</span><span class="s1">&#39;</span> <span class="o">%</span> \
+      <span class="nb">tuple</span><span class="p">((</span><span class="n">m_in</span><span class="p">[[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">],[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">]]</span><span class="o">/</span><span class="n">m_in</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span><span class="o">.</span><span class="n">tolist</span><span class="p">()))</span>
+
+<span class="k">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Out of sample:&#39;</span><span class="p">)</span>
+<span class="k">print</span><span class="p">(</span><span class="s1">&#39;Error class 0: </span><span class="si">%4.4f</span><span class="s1">, Error class 1: </span><span class="si">%4.4f</span><span class="s1">&#39;</span> <span class="o">%</span> \
+      <span class="nb">tuple</span><span class="p">((</span><span class="n">m_out</span><span class="p">[[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">],[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">]]</span><span class="o">/</span><span class="n">m_out</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span><span class="o">.</span><span class="n">tolist</span><span class="p">()))</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">y_pred_prob</span> <span class="o">=</span> <span class="n">rfc</span><span class="o">.</span><span class="n">predict_proba</span><span class="p">(</span><span class="n">X_test</span><span class="p">)[:,</span> <span class="mi">1</span><span class="p">]</span>
+<span class="n">fpr_grd</span><span class="p">,</span> <span class="n">tpr_grd</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">roc_curve</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">y_pred_prob</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fpr_grd</span><span class="p">,</span><span class="n">tpr_grd</span><span class="p">)</span>
+<span class="n">fpr_grd</span><span class="p">,</span> <span class="n">tpr_grd</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">roc_curve</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">y_hat_test</span><span class="p">)</span>
+<span class="k">print</span><span class="p">(</span><span class="n">fpr_grd</span><span class="p">,</span><span class="n">tpr_grd</span><span class="p">)</span>
+<span class="k">print</span><span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">fpr_grd</span><span class="p">,</span><span class="mi">1</span><span class="o">-</span><span class="n">tpr_grd</span><span class="p">)</span>
+
+<span class="n">auc</span><span class="p">(</span><span class="n">fpr_grd</span><span class="p">,</span><span class="n">tpr_grd</span><span class="p">)</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>In sample:
+              precision    recall  f1-score   support
+
+        0.0       0.98      0.92      0.95    205030
+        1.0       0.93      0.98      0.95    205030
+
+avg / total       0.95      0.95      0.95    410060
+
+
+Out of sample:
+              precision    recall  f1-score   support
+
+        0.0       1.00      0.92      0.96    100970
+        1.0       0.29      0.95      0.44      3376
+
+avg / total       0.98      0.92      0.94    104346
+
+
+In sample:
+ [[189295  15735]
+ [  4646 200384]]
+
+Out of sample:
+ [[93031  7939]
+ [  177  3199]]
+
+
+
+In sample:
+Error class 0: 0.0767, Error class 1: 0.0227
+
+Out of sample:
+Error class 0: 0.0786, Error class 1: 0.0524
+[ 0.          0.07862732  1.        ] [ 0.          0.94757109  1.        ]
+[ 1.          0.92137268  0.        ] [ 1.          0.05242891  0.        ]
+
+
+
+
+
+0.93447188750166055
+</pre></div>
+
+
+<p><img alt="png" src="images/output_33_2.png"></p>
+<div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">scipy.stats</span> <span class="kn">import</span> <span class="n">randint</span> <span class="k">as</span> <span class="n">sp_randint</span>
+
+
+
+<span class="c1"># Utility function to report best scores</span>
+<span class="k">def</span> <span class="nf">report</span><span class="p">(</span><span class="n">results</span><span class="p">,</span> <span class="n">n_top</span><span class="o">=</span><span class="mi">5</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_top</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="n">candidates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;rank_test_score&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">i</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">candidate</span> <span class="ow">in</span> <span class="n">candidates</span><span class="p">:</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Model with rank: {0}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Mean validation score: {0:.3f} (std: {1:.3f})&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                  <span class="n">results</span><span class="p">[</span><span class="s1">&#39;mean_test_score&#39;</span><span class="p">][</span><span class="n">candidate</span><span class="p">],</span>
+                  <span class="n">results</span><span class="p">[</span><span class="s1">&#39;std_test_score&#39;</span><span class="p">][</span><span class="n">candidate</span><span class="p">]))</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Parameters: {0}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;params&#39;</span><span class="p">][</span><span class="n">candidate</span><span class="p">]))</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+
+
+<span class="c1"># specify parameters and distributions to sample from</span>
+<span class="n">param_dist</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;n_estimators&quot;</span><span class="p">:</span> <span class="n">sp_randint</span><span class="p">(</span><span class="mi">500</span><span class="p">,</span> <span class="mi">8000</span><span class="p">),</span>
+              <span class="s2">&quot;max_depth&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">8</span><span class="p">,</span><span class="mi">9</span><span class="p">,</span> <span class="bp">None</span><span class="p">],</span>
+              <span class="s2">&quot;max_features&quot;</span><span class="p">:</span> <span class="n">sp_randint</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">9</span><span class="p">),</span>
+              <span class="s2">&quot;min_samples_split&quot;</span><span class="p">:</span> <span class="n">sp_randint</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">9</span><span class="p">),</span>
+              <span class="s2">&quot;min_samples_leaf&quot;</span><span class="p">:</span> <span class="n">sp_randint</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span>
+              <span class="s2">&quot;bootstrap&quot;</span><span class="p">:</span> <span class="p">[</span><span class="bp">True</span><span class="p">,</span> <span class="bp">False</span><span class="p">],</span>
+             <span class="p">}</span>
+
+<span class="c1"># run randomized search</span>
+<span class="n">random_search</span> <span class="o">=</span> <span class="n">RandomizedSearchCV</span><span class="p">(</span><span class="n">rfc</span><span class="p">,</span>
+                                   <span class="n">param_distributions</span><span class="o">=</span><span class="n">param_dist</span><span class="p">,</span>
+                                   <span class="n">n_iter</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+                                   <span class="n">scoring</span><span class="o">=</span><span class="s1">&#39;roc_auc&#39;</span><span class="p">,</span>
+                                   <span class="n">cv</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+
+<span class="n">random_search</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+<span class="k">print</span><span class="p">(</span><span class="n">report</span><span class="p">(</span><span class="n">random_search</span><span class="o">.</span><span class="n">cv_results_</span><span class="p">))</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">y_train</span><span class="o">.</span><span class="n">size</span><span class="p">),</span><span class="mi">30000</span><span class="p">)</span>
+<span class="c1"># = pairwise_distances(X_train[mask,:],n_jobs=4)</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="n">tsne</span> <span class="o">=</span> <span class="n">manifold</span><span class="o">.</span><span class="n">TSNE</span><span class="p">(</span><span class="n">n_iter</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
+                     <span class="n">learning_rate</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span>
+                     <span class="n">init</span><span class="o">=</span><span class="s1">&#39;pca&#39;</span><span class="p">,</span>
+                     <span class="n">perplexity</span><span class="o">=</span><span class="mf">35.0</span><span class="p">)</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="n">x</span> <span class="o">=</span><span class="n">tsne</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">X_train</span><span class="p">[</span><span class="n">mask</span><span class="p">,:])</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span><span class="mi">10</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">x</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span><span class="n">x</span><span class="p">[:,</span><span class="mi">1</span><span class="p">],</span> <span class="n">c</span><span class="o">=</span><span class="n">y_train</span><span class="p">[</span><span class="n">mask</span><span class="p">],</span><span class="n">marker</span><span class="o">=</span><span class="s1">&#39;+&#39;</span><span class="p">)</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="n">mask</span> <span class="o">=</span> <span class="n">rfc</span><span class="o">.</span><span class="n">feature_importances_</span><span class="o">.</span><span class="n">argsort</span><span class="p">()[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s1">&#39;features&#39;</span><span class="p">:</span> <span class="n">X</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="n">mask</span><span class="p">],</span>
+                  <span class="s1">&#39;importance&#39;</span><span class="p">:</span> <span class="n">rfc</span><span class="o">.</span><span class="n">feature_importances_</span><span class="p">[</span><span class="n">mask</span><span class="p">]})</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="p">(</span><span class="n">df</span>
+      <span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">to_replace</span><span class="o">=</span><span class="p">[</span><span class="sa">r</span><span class="s1">&#39;C\(country\)\[.+\]&#39;</span><span class="p">,</span>
+                           <span class="sa">r</span><span class="s1">&#39;C\(source\)\[.+\]&#39;</span><span class="p">,</span>
+                           <span class="sa">r</span><span class="s1">&#39;C\(country \* source\)\[.+\]&#39;</span> <span class="p">],</span>
+                 <span class="n">value</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;country&#39;</span><span class="p">,</span><span class="s1">&#39;source&#39;</span><span class="p">,</span><span class="s1">&#39;country*source&#39;</span><span class="p">],</span> <span class="n">regex</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+      <span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;features&#39;</span><span class="p">,</span> <span class="n">as_index</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+      <span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+      <span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s1">&#39;importance&#39;</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+     <span class="p">)</span>
+<span class="n">df</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="n">df</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="s1">&#39;features&#39;</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="s1">&#39;importance&#39;</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;bar&#39;</span><span class="p">)</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="n">mask</span> <span class="o">=</span> <span class="n">rfc</span><span class="o">.</span><span class="n">feature_importances_</span><span class="o">.</span><span class="n">argsort</span><span class="p">()[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s1">&#39;features&#39;</span><span class="p">:</span> <span class="n">X</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="n">mask</span><span class="p">],</span>
+                  <span class="s1">&#39;importance&#39;</span><span class="p">:</span> <span class="n">rfc</span><span class="o">.</span><span class="n">feature_importances_</span><span class="p">[</span><span class="n">mask</span><span class="p">]})</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">to_replace</span><span class="o">=</span><span class="p">[</span><span class="sa">r</span><span class="s1">&#39;C\(country\)\[.+\]&#39;</span><span class="p">,</span> <span class="sa">r</span><span class="s1">&#39;C\(source\)\[.+\]&#39;</span> <span class="p">],</span>
+                 <span class="n">value</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;country&#39;</span><span class="p">,</span><span class="s1">&#39;source&#39;</span><span class="p">],</span> <span class="n">regex</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+      <span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;features&#39;</span><span class="p">,</span> <span class="n">as_index</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+      <span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+      <span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s1">&#39;importance&#39;</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+     <span class="p">)</span>
+<span class="n">df</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="n">df</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="s1">&#39;features&#39;</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="s1">&#39;importance&#39;</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;bar&#39;</span><span class="p">)</span>
+</pre></div>
+
+
+<h1>Conclusion</h1>
+<ol>
+<li>The site is not doing well in China. I would recommend a further study.</li>
+<li>Things are doing well in Germany, which may represent a great market opportunity, since there are just a few number of users from this country.</li>
+<li>The site is doing well with young people.</li>
+<li>Old users are more likely to purchase an item. We should promote more engagement, but direct ads do not seem to be the most effective.</li>
+<li>The bootstrap technique definitely helped to improve the performance of the model.</li>
+</ol>
+<div class="highlight"><pre><span></span><span class="n">xg</span> <span class="o">=</span> <span class="n">xgboost</span><span class="o">.</span><span class="n">XGBClassifier</span><span class="p">(</span><span class="n">n_estimators</span><span class="o">=</span><span class="mi">8000</span><span class="p">,</span>
+                           <span class="n">nthread</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+                           <span class="n">learning_rate</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
+<span class="n">sgdc</span> <span class="o">=</span> <span class="n">SGDClassifier</span><span class="p">(</span><span class="n">n_jobs</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">n_iter</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="n">norm</span> <span class="o">=</span> <span class="n">StandardScaler</span><span class="p">()</span>
+<span class="n">clf</span> <span class="o">=</span> <span class="n">SGDClassifier</span><span class="p">(</span><span class="n">n_jobs</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+<span class="n">clf</span> <span class="o">=</span> <span class="n">LogisticRegressionCV</span><span class="p">(</span><span class="n">cv</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span><span class="n">n_jobs</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span><span class="n">Cs</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+<span class="n">rfc</span> <span class="o">=</span> <span class="n">Pipeline</span><span class="p">([(</span><span class="s1">&#39;clf&#39;</span><span class="p">,</span><span class="n">clf</span><span class="p">)])</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="n">rfc</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">);</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="n">y_hat_train</span> <span class="o">=</span> <span class="n">rfc</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_train</span><span class="p">)</span>
+<span class="n">y_hat_test</span> <span class="o">=</span> <span class="n">rfc</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
+<span class="k">print</span><span class="p">(</span><span class="s1">&#39;In sample:</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">classification_report</span><span class="p">(</span><span class="n">y_train</span><span class="p">,</span> <span class="n">y_hat_train</span><span class="p">))</span>
+<span class="k">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Out of sample:</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span><span class="n">classification_report</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">y_hat_test</span><span class="p">))</span>  
+
+<span class="n">m_in</span> <span class="o">=</span> <span class="n">confusion_matrix</span><span class="p">(</span><span class="n">y_train</span><span class="p">,</span> <span class="n">y_hat_train</span><span class="p">)</span>
+<span class="n">m_out</span> <span class="o">=</span> <span class="n">confusion_matrix</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">y_hat_test</span><span class="p">)</span>
+
+<span class="k">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">In sample:</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">m_in</span><span class="p">)</span>
+<span class="k">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Out of sample:</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span><span class="n">m_out</span><span class="p">,</span><span class="s1">&#39;</span><span class="se">\n\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+<span class="k">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">In sample:&#39;</span><span class="p">)</span>
+<span class="k">print</span><span class="p">(</span><span class="s1">&#39;Error class 0: </span><span class="si">%4.4f</span><span class="s1">, Error class 1: </span><span class="si">%4.4f</span><span class="s1">&#39;</span> <span class="o">%</span> \
+      <span class="nb">tuple</span><span class="p">((</span><span class="n">m_in</span><span class="p">[[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">],[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">]]</span><span class="o">/</span><span class="n">m_in</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span><span class="o">.</span><span class="n">tolist</span><span class="p">()))</span>
+
+<span class="k">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Out of sample:&#39;</span><span class="p">)</span>
+<span class="k">print</span><span class="p">(</span><span class="s1">&#39;Error class 0: </span><span class="si">%4.4f</span><span class="s1">, Error class 1: </span><span class="si">%4.4f</span><span class="s1">&#39;</span> <span class="o">%</span> \
+      <span class="nb">tuple</span><span class="p">((</span><span class="n">m_out</span><span class="p">[[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">],[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">]]</span><span class="o">/</span><span class="n">m_out</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span><span class="o">.</span><span class="n">tolist</span><span class="p">()))</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">y_pred_prob</span> <span class="o">=</span> <span class="n">rfc</span><span class="o">.</span><span class="n">predict_proba</span><span class="p">(</span><span class="n">X_test</span><span class="p">)[:,</span> <span class="mi">1</span><span class="p">]</span>
+<span class="n">fpr_grd</span><span class="p">,</span> <span class="n">tpr_grd</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">roc_curve</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">y_pred_prob</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">fpr_grd</span><span class="p">,</span><span class="n">tpr_grd</span><span class="p">)</span>
+<span class="n">fpr_grd</span><span class="p">,</span> <span class="n">tpr_grd</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">roc_curve</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">y_hat_test</span><span class="p">)</span>
+<span class="k">print</span><span class="p">(</span><span class="n">fpr_grd</span><span class="p">,</span><span class="n">tpr_grd</span><span class="p">)</span>
+<span class="k">print</span><span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">fpr_grd</span><span class="p">,</span><span class="mi">1</span><span class="o">-</span><span class="n">tpr_grd</span><span class="p">)</span>
+
+<span class="n">auc</span><span class="p">(</span><span class="n">fpr_grd</span><span class="p">,</span><span class="n">tpr_grd</span><span class="p">)</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>In sample:
+              precision    recall  f1-score   support
+
+        0.0       0.94      0.94      0.94    205030
+        1.0       0.94      0.94      0.94    205030
+
+avg / total       0.94      0.94      0.94    410060
+
+
+Out of sample:
+              precision    recall  f1-score   support
+
+        0.0       1.00      0.94      0.97    100970
+        1.0       0.35      0.94      0.51      3376
+
+avg / total       0.98      0.94      0.95    104346
+
+
+In sample:
+ [[193325  11705]
+ [ 11855 193175]]
+
+Out of sample:
+ [[95095  5875]
+ [  214  3162]]
+
+
+
+In sample:
+Error class 0: 0.0571, Error class 1: 0.0578
+
+Out of sample:
+Error class 0: 0.0582, Error class 1: 0.0634
+[ 0.         0.0581856  1.       ] [ 0.          0.93661137  1.        ]
+[ 1.         0.9418144  0.       ] [ 1.          0.06338863  0.        ]
+
+
+
+
+
+0.93921288736225439
+</pre></div>
+
+
+<p><img alt="png" src="images/output_49_2.png"></p>                </article>
+            </aside><!-- /#featured -->
+        <section id="extras" class="body">
+                <div class="social">
+                        <h2>social</h2>
+                        <ul>
+                            <li><a href="https://jgondin.github.io/feeds/all.atom.xml" type="application/atom+xml" rel="alternate">atom feed</a></li>
+
+                            <li><a href="https://twitter.com/j_gondin">twitter</a></li>
+                            <li><a href="https://github.com/jgondin">github</a></li>
+                            <li><a href="https://www.linkedin.com/in/gondin">linkedin</a></li>
+                        </ul>
+                </div><!-- /.social -->
+        </section><!-- /#extras -->
+
+        <footer id="contentinfo" class="body">
+            
+
+                <p></p>
+        </footer><!-- /#contentinfo -->
+
+</body>
+>>>>>>> 94b865798b763fed00e01deedba96e20776e4bd4
 </html>
